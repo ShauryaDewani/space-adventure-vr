@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Space Adventure VR - CMPT 461</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script defer src="script.js"></script>
+  </head>
+  <body>
+    <div id="fallback-ui">
+      <h1>Space Adventure VR</h1>
+      <p>If WebXR/VR is unavailable, you can still play in normal 3D mode.</p>
+    </div>
+
+    <a-scene
+      id="gameScene"
+      game-manager
+      renderer="antialias: true; colorManagement: true"
+      vr-mode-ui="enabled: true"
+      fog="type: exponential; color: #020617; density: 0.015"
+      background="color: #020617"
+    >
+      <a-assets timeout="5000">
+        <!-- Textures loaded from assets/textures -->
+        <img id="texEnergy" src="./assets/textures/1801.jpg" crossorigin="anonymous" />
+        <img id="texPanel" src="./assets/textures/desmal14.jpg" crossorigin="anonymous" />
+        <img id="texRock" src="./assets/textures/rock_face_03_diff_4k.jpg" crossorigin="anonymous" />
+      </a-assets>
+
+      <!-- Camera Rig -->
+      <a-entity id="playerRig" position="0 1.6 10" auto-fly="enabled: false; speed: 4.2; steerStrength: 2.3">
+        <a-entity id="playerCam" camera look-controls>
+          <!-- HUD -->
+          <a-entity id="hudRoot" position="0 0 -1.2" visible="false">
+            <a-plane
+              width="1.4"
+              height="0.32"
+              color="#08152f"
+              material="src: #texPanel; repeat: 2 1; roughness: 0.92; metalness: 0.08; opacity: 0.82; transparent: true"
+              position="0 0 0"
+            ></a-plane>
+            <a-text id="scoreText" value="Score: 0" color="#7df9ff" align="left" width="2.2" position="-0.62 0.05 0.01"></a-text>
+            <a-text id="healthText" value="Health: 3" color="#ffb3c1" align="right" width="2.2" position="0.62 0.05 0.01"></a-text>
+          </a-entity>
+
+          <!-- Center Gaze Cursor -->
+          <a-entity
+            id="gazeCursor"
+            cursor="fuse: true; fuseTimeout: 900"
+            raycaster="objects: .gaze-target; far: 30"
+            position="0 0 -1"
+            geometry="primitive: ring; radiusInner: 0.008; radiusOuter: 0.015"
+            material="color: #ffffff; shader: flat; opacity: 0.9; transparent: true"
+            animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.6 0.6 0.6; dur: 900"
+            animation__reset="property: scale; startEvents: mouseleave; to: 1 1 1; dur: 160"
+          ></a-entity>
+        </a-entity>
+      </a-entity>
+
+      <!-- Decorative stars -->
+      <a-entity id="starField"></a-entity>
+
+      <!-- Splash Screen -->
+      <a-entity id="uiSplash" position="0 1.8 -3" visible="true">
+        <a-plane width="3.5" height="2.2" color="#031432" material="src: #texPanel; repeat: 2 1; roughness: 0.95; metalness: 0.07; opacity: 0.9; transparent: true"></a-plane>
+        <a-ring radius-inner="1.56" radius-outer="1.7" position="0 0.98 0.02" material="src: #texEnergy; color: #ffca7a; emissive: #ff9e3d; emissiveIntensity: 0.45; opacity: 0.88; transparent: true"></a-ring>
+        <a-text value="Space Adventure VR" align="center" color="#7df9ff" width="5.2" position="0 0.72 0.01"></a-text>
+        <a-text value="Shaurya Dewani" align="center" color="#ffffff" width="3.8" position="0 0.34 0.01"></a-text>
+        <a-text
+          value="CMPT 461 Immersive Computing\nIndividual Project based on A-Frame"
+          align="center"
+          color="#c4d7ff"
+          width="2.9"
+          position="0 0.02 0.01"
+        ></a-text>
+        <a-text value="Loading... Look at Start to continue" align="center" color="#ffd166" width="3.2" position="0 -0.72 0.01"></a-text>
+      </a-entity>
+
+      <!-- Setup Screen -->
+      <a-entity id="uiSetup" position="0 1.8 -3" visible="false">
+        <a-plane width="3.8" height="2.5" color="#041b44" material="src: #texPanel; repeat: 2.3 1.5; roughness: 0.95; metalness: 0.08; opacity: 0.93; transparent: true"></a-plane>
+        <a-text value="Setup" align="center" color="#8ee3ff" width="4.4" position="0 0.95 0.01"></a-text>
+        <a-text
+          id="setupInstructionsText"
+          value="Look around to steer\nCollect glowing objects\nAvoid obstacles\nGaze at buttons to select"
+          align="center"
+          color="#ffffff"
+          width="2.6"
+          position="0 0.42 0.01"
+        ></a-text>
+
+        <a-entity
+          class="gaze-target"
+          gaze-button="action: start-game"
+          geometry="primitive: plane; width: 1.4; height: 0.34"
+          material="src: #texPanel; color: #1faa6a; roughness: 0.85; metalness: 0.12"
+          position="0 -0.22 0.03"
+        >
+          <a-text value="Start Game" align="center" color="#ffffff" width="3" position="0 0 0.01"></a-text>
+        </a-entity>
+
+        <a-entity
+          id="musicToggleBtn"
+          class="gaze-target"
+          gaze-button="action: toggle-music"
+          geometry="primitive: plane; width: 1.4; height: 0.34"
+          material="src: #texPanel; color: #2d6cdf; roughness: 0.85; metalness: 0.12"
+          position="0 -0.68 0.03"
+        >
+          <a-text id="musicToggleText" value="Music: ON" align="center" color="#ffffff" width="3" position="0 0 0.01"></a-text>
+        </a-entity>
+
+        <a-entity
+          class="gaze-target"
+          gaze-button="action: instructions"
+          geometry="primitive: plane; width: 1.4; height: 0.34"
+          material="src: #texPanel; color: #8a5be2; roughness: 0.85; metalness: 0.12"
+          position="0 -1.14 0.03"
+        >
+          <a-text value="Instructions" align="center" color="#ffffff" width="3" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Level Complete / Transition -->
+      <a-entity id="uiLevelComplete" position="0 1.8 -3" visible="false">
+        <a-plane width="3.4" height="2.0" color="#042f3a" material="src: #texPanel; repeat: 2 1.4; roughness: 0.92; metalness: 0.12; opacity: 0.95; transparent: true"></a-plane>
+        <a-ring radius-inner="1.22" radius-outer="1.34" position="0 0.78 0.02" material="src: #texEnergy; color: #ffbd62; emissive: #ffb156; emissiveIntensity: 0.55; opacity: 0.86; transparent: true"></a-ring>
+        <a-text value="Level 1 Complete!" align="center" color="#9effb2" width="4.2" position="0 0.55 0.01"></a-text>
+        <a-text id="transitionScoreText" value="Score: 0" align="center" color="#ffffff" width="3.2" position="0 0.15 0.01"></a-text>
+        <a-entity
+          class="gaze-target"
+          gaze-button="action: continue-level2"
+          geometry="primitive: plane; width: 1.55; height: 0.36"
+          material="src: #texPanel; color: #1f996d; roughness: 0.85; metalness: 0.12"
+          position="0 -0.45 0.03"
+        >
+          <a-text value="Continue to Level 2" align="center" color="#ffffff" width="2.2" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- End Screen -->
+      <a-entity id="uiEnd" position="0 1.8 -3" visible="false">
+        <a-plane width="3.5" height="2.2" color="#2b0e2b" material="src: #texPanel; repeat: 2 1.3; roughness: 0.92; metalness: 0.1; opacity: 0.95; transparent: true"></a-plane>
+        <a-text id="endTitleText" value="Mission Complete!" align="center" color="#ffde8a" width="4.2" position="0 0.7 0.01"></a-text>
+        <a-text id="finalScoreText" value="Final Score: 0" align="center" color="#ffffff" width="3.2" position="0 0.25 0.01"></a-text>
+        <a-entity
+          class="gaze-target"
+          gaze-button="action: restart"
+          geometry="primitive: plane; width: 1.2; height: 0.34"
+          material="src: #texPanel; color: #4e74ff; roughness: 0.85; metalness: 0.12"
+          position="0 -0.45 0.03"
+        >
+          <a-text value="Restart" align="center" color="#ffffff" width="2.6" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Level 1 -->
+      <a-entity id="level1Root" visible="false">
+        <a-sky color="#040b1a"></a-sky>
+        <a-entity id="l1Track"></a-entity>
+        <a-entity id="l1Rings"></a-entity>
+        <a-entity id="l1Hazards"></a-entity>
+        <a-entity id="l1Portal" finish-portal="level: 1" visible="false" position="0 1.6 -95">
+          <a-torus radius="2.4" radius-tubular="0.18" color="#66ffcc" material="src: #texEnergy; emissive: #ffae45; emissiveIntensity: 0.95; roughness: 0.2; metalness: 0.2"></a-torus>
+          <a-ring radius-inner="2.55" radius-outer="2.85" color="#b2fff2" material="src: #texEnergy; shader: flat; opacity: 0.58; transparent: true"></a-ring>
+          <a-text value="Finish Ring Goal!" align="center" color="#ffffff" width="7" position="0 3.1 0"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Level 2 -->
+      <a-entity id="level2Root" visible="false">
+        <a-entity id="l2Tunnel"></a-entity>
+        <a-entity id="l2Crystals"></a-entity>
+        <a-entity id="l2Hazards"></a-entity>
+        <a-entity id="l2Portal" finish-portal="level: 2" position="0 1.6 -130" visible="false">
+          <a-octahedron radius="1.6" color="#8affff" material="src: #texEnergy; emissive: #ffb560; emissiveIntensity: 0.9; roughness: 0.16; metalness: 0.24" spin-float></a-octahedron>
+          <a-text value="Final Exit" align="center" color="#ffffff" width="6" position="0 2.8 0"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <a-entity light="type: ambient; color: #7f8db1; intensity: 0.8"></a-entity>
+      <a-entity light="type: directional; color: #d9edff; intensity: 0.7" position="1 4 2"></a-entity>
+      <a-entity light="type: point; color: #6ee7ff; intensity: 0.7; distance: 30" position="0 4 -30"></a-entity>
+    </a-scene>
+  </body>
+</html>

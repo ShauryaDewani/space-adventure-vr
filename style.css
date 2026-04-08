@@ -1,0 +1,58 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, #081735 0%, #01050f 80%);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+a-scene {
+  width: 100%;
+  height: 100%;
+}
+
+#fallback-ui {
+  position: fixed;
+  z-index: 2;
+  top: 0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 460px);
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(7, 17, 41, 0.55);
+  color: #dbe7ff;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  border: 1px solid rgba(123, 165, 255, 0.35);
+}
+
+#fallback-ui h1 {
+  margin: 0.15rem 0 0.2rem;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+#fallback-ui p {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.95;
+}
+
+@media (max-width: 600px) {
+  #fallback-ui {
+    top: 0.4rem;
+    font-size: 0.88rem;
+  }
+
+  #fallback-ui h1 {
+    font-size: 0.92rem;
+  }
+}
