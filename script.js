@@ -16,7 +16,7 @@
     splashDurationMs: 2600,
     startHealth: 3,
     level1: {
-      ringTarget: 8,
+      ringTarget: 3,
       ringPoints: 10,
       damage: 1
     },
@@ -258,14 +258,21 @@
       const hazardParent = this.refs.l1Hazards;
       const trackParent = this.refs.l1Track;
 
-      for (let i = 0; i < 11; i += 1) {
-        const z = -18 - i * 8;
-        const x = Math.sin(i * 0.85) * 2.5;
-        const y = 1.4 + Math.cos(i * 0.5) * 0.7;
+      // Level 1 is intentionally short and readable as a steering tutorial.
+      const tutorialRingPath = [
+        { x: -0.8, y: 1.55, z: -18 },
+        { x: 0.9, y: 1.62, z: -26 },
+        { x: -0.7, y: 1.48, z: -34 },
+        { x: 0.75, y: 1.64, z: -42 },
+        { x: 0.0, y: 1.56, z: -50 }
+      ];
+
+      for (let i = 0; i < tutorialRingPath.length; i += 1) {
+        const ringPos = tutorialRingPath[i];
 
         const ring = document.createElement("a-torus");
-        ring.setAttribute("position", `${x.toFixed(2)} ${y.toFixed(2)} ${z}`);
-        ring.setAttribute("radius", "0.85");
+        ring.setAttribute("position", `${ringPos.x} ${ringPos.y} ${ringPos.z}`);
+        ring.setAttribute("radius", "0.92");
         ring.setAttribute("radius-tubular", "0.08");
         ring.setAttribute(
           "material",
@@ -278,14 +285,14 @@
         ringParent.appendChild(ring);
       }
 
-      for (let i = 0; i < 18; i += 1) {
+      for (let i = 0; i < 8; i += 1) {
         const asteroid = document.createElement("a-dodecahedron");
-        const z = -16 - i * 5.7;
-        const lane = (i % 5) - 2;
-        const x = lane * 1.6 + randomInRange(-0.45, 0.45);
-        const y = 1.2 + randomInRange(-0.8, 1.3);
+        const z = -22 - i * 5.1;
+        const lane = (i % 4) - 1.5;
+        const x = lane * 1.7 + randomInRange(-0.32, 0.32);
+        const y = 1.45 + randomInRange(-0.55, 0.85);
         asteroid.setAttribute("position", `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`);
-        asteroid.setAttribute("radius", randomInRange(0.45, 0.82).toFixed(2));
+        asteroid.setAttribute("radius", randomInRange(0.4, 0.66).toFixed(2));
         asteroid.setAttribute(
           "material",
           "src: #texRock; color: #7b7770; roughness: 0.98; metalness: 0.02; repeat: 1.5 1.5"
@@ -293,18 +300,21 @@
         asteroid.setAttribute("spin-float", "speed: 0.35; floatAmp: 0.03");
         asteroid.setAttribute("hazard", `damage: ${CONFIG.level1.damage}`);
         asteroid.setAttribute("class", "active-collider");
-        asteroid.setAttribute("data-radius", "0.7");
+        asteroid.setAttribute("data-radius", "0.6");
         hazardParent.appendChild(asteroid);
       }
 
-      for (let i = 0; i < 10; i += 1) {
+      for (let i = 0; i < 6; i += 1) {
         const marker = document.createElement("a-cylinder");
-        marker.setAttribute("position", `${i % 2 === 0 ? -4 : 4} 1 ${-10 - i * 10}`);
+        marker.setAttribute("position", `${i % 2 === 0 ? -3.8 : 3.8} 1 ${-12 - i * 8}`);
         marker.setAttribute("radius", "0.08");
         marker.setAttribute("height", "2.2");
         marker.setAttribute("material", "src: #texPanel; color: #40598c; emissive: #4d71b9; emissiveIntensity: 0.28; repeat: 1 3");
         trackParent.appendChild(marker);
       }
+
+      // Move level 1 finish portal closer for faster transition to level 2.
+      this.refs.l1Portal.setAttribute("position", "0 1.6 -56");
     },
 
     buildLevel2: function () {
@@ -386,7 +396,7 @@
       hud.setAttribute("visible", newState === GAME_STATES.LEVEL1 || newState === GAME_STATES.LEVEL2);
 
       const moving = newState === GAME_STATES.LEVEL1 || newState === GAME_STATES.LEVEL2;
-      this.refs.rig.setAttribute("auto-fly", `enabled: ${moving}; speed: ${newState === GAME_STATES.LEVEL2 ? 5.2 : 4.2}; steerStrength: 2.3`);
+      this.refs.rig.setAttribute("auto-fly", `enabled: ${moving}; speed: ${newState === GAME_STATES.LEVEL2 ? 4.9 : 3.8}; steerStrength: 2.1`);
 
       if (newState === GAME_STATES.LEVEL1_COMPLETE) {
         this.refs.transitionScore.setAttribute("value", `Score: ${this.score}`);
@@ -542,26 +552,66 @@
   AFRAME.registerComponent("auto-fly", {
     schema: {
       enabled: { type: "boolean", default: false },
-      speed: { type: "number", default: 4.0 },
-      steerStrength: { type: "number", default: 2.0 }
+      speed: { type: "number", default: 4.0 }, // Constant forward speed.
+      steerStrength: { type: "number", default: 2.1 }, // Max side/up drift speed from look direction.
+      deadzone: { type: "number", default: 0.18 }, // Stronger center deadzone to reduce tiny headset jitter.
+      smoothing: { type: "number", default: 5.5 }, // Lower value gives smoother acceleration/deceleration.
+      inputSmoothing: { type: "number", default: 6.0 }, // Smooth raw head-look input before deadzone.
+      verticalScale: { type: "number", default: 0.58 }, // Keep vertical motion comfortable in mobile VR.
+      maxLateralSpeed: { type: "number", default: 2.35 } // Clamp steering speed spikes.
     },
     init: function () {
       this.cameraEl = document.querySelector("#playerCam");
       this.tempDir = new THREE.Vector3();
+      this.currentVX = 0;
+      this.currentVY = 0;
+      this.filteredLookX = 0;
+      this.filteredLookY = 0;
+    },
+    applyDeadzone: function (value, deadzone) {
+      const abs = Math.abs(value);
+      if (abs < deadzone) return 0;
+      // Re-normalize after deadzone so full head turns still reach full steering.
+      const sign = Math.sign(value);
+      return sign * ((abs - deadzone) / (1 - deadzone));
     },
     tick: function (time, deltaMs) {
-      if (!this.data.enabled || !this.cameraEl) return;
+      if (!this.data.enabled || !this.cameraEl) {
+        this.currentVX = 0;
+        this.currentVY = 0;
+        return;
+      }
       const dt = deltaMs / 1000;
       const rig = this.el.object3D;
       const cam = this.cameraEl.object3D;
 
+      // Look-following flight:
+      // 1) read camera forward vector
+      // 2) map x/y to desired lateral/up steering
+      // 3) apply deadzone and smoothing for stable mobile VR control
       cam.getWorldDirection(this.tempDir);
-      const targetVX = this.tempDir.x * this.data.steerStrength;
-      const targetVY = this.tempDir.y * this.data.steerStrength;
+
+      // Step 1: smooth raw look direction to reduce micro head jitter.
+      const inputAlpha = 1 - Math.exp(-this.data.inputSmoothing * dt);
+      this.filteredLookX += (this.tempDir.x - this.filteredLookX) * inputAlpha;
+      this.filteredLookY += (this.tempDir.y - this.filteredLookY) * inputAlpha;
+
+      // Step 2: apply deadzone so tiny movements near center do not steer.
+      const steerX = this.applyDeadzone(this.filteredLookX, this.data.deadzone);
+      const steerY = this.applyDeadzone(this.filteredLookY, this.data.deadzone);
+
+      const targetVX = steerX * this.data.steerStrength;
+      const targetVY = steerY * this.data.steerStrength * this.data.verticalScale;
+
+      const smoothingAlpha = 1 - Math.exp(-this.data.smoothing * dt);
+      this.currentVX += (targetVX - this.currentVX) * smoothingAlpha;
+      this.currentVY += (targetVY - this.currentVY) * smoothingAlpha;
+      this.currentVX = THREE.MathUtils.clamp(this.currentVX, -this.data.maxLateralSpeed, this.data.maxLateralSpeed);
+      this.currentVY = THREE.MathUtils.clamp(this.currentVY, -this.data.maxLateralSpeed, this.data.maxLateralSpeed);
 
       rig.position.z -= this.data.speed * dt;
-      rig.position.x += targetVX * dt;
-      rig.position.y += targetVY * dt;
+      rig.position.x += this.currentVX * dt;
+      rig.position.y += this.currentVY * dt;
 
       rig.position.x = THREE.MathUtils.clamp(rig.position.x, -3.2, 3.2);
       rig.position.y = THREE.MathUtils.clamp(rig.position.y, 0.45, 3.15);
@@ -622,7 +672,7 @@
 
       // Level 2 tunnel wall handling: touching wall bounds causes damage.
       if (gm.state === GAME_STATES.LEVEL2) {
-        const tunnelHalfWidth = 2.05;
+        const tunnelHalfWidth = 2.18;
         const tunnelMinY = 0.05;
         const tunnelMaxY = 3.15;
         const outOfBounds = Math.abs(rigPos.x) > tunnelHalfWidth || rigPos.y < tunnelMinY || rigPos.y > tunnelMaxY;

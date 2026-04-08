@@ -77,15 +77,19 @@ Then open:
 
 ## Controls
 
-- **Steer:** look around (head direction controls horizontal/vertical movement).
+- **Steer:** the ship follows where you look (look left/right/up/down to drift that direction).
 - **Move:** automatic forward movement.
 - **Select UI buttons:** gaze at buttons until fuse cursor triggers.
 - **VR mode:** use browser VR button and insert phone into cardboard viewer.
 
+Steering includes smoothing and a center deadzone to reduce jitter on low-cost mobile VR headsets.
+The control model also smooths raw head input before steering, so the ship still clearly follows your gaze but feels more stable.
+
 ## Gameplay Objectives
 
 ### Level 1: Open Space
-- Collect at least **8 rings** (`+10` each).
+- Collect at least **3 hoops/rings** (`+10` each).
+- Hoops are arranged as an easy steering tutorial path to practice look-following control.
 - Avoid asteroids (each hit reduces health).
 - Reach portal once ring target is completed.
 
