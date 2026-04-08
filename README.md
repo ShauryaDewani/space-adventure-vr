@@ -82,8 +82,7 @@ Then open:
 - **Select UI buttons:** gaze at buttons until fuse cursor triggers.
 - **VR mode:** use browser VR button and insert phone into cardboard viewer.
 
-Steering includes smoothing and a center deadzone to reduce jitter on low-cost mobile VR headsets.
-The control model also smooths raw head input before steering, so the ship still clearly follows your gaze but feels more stable.
+Steering uses look-following flight with lower deadzone and faster response tuning so movement starts sooner and feels less floaty, while still applying smoothing to avoid jitter on cheap mobile VR headsets.
 
 ## Gameplay Objectives
 
@@ -92,6 +91,8 @@ The control model also smooths raw head input before steering, so the ship still
 - Hoops are arranged as an easy steering tutorial path to practice look-following control.
 - Avoid asteroids (each hit reduces health).
 - Reach portal once ring target is completed.
+
+After Level 1 completion, the game automatically transitions to Level 2 after a short level-complete screen (no button press required).
 
 ### Level 2: Space Tunnel
 - Collect at least **7 crystals** (`+20` each).

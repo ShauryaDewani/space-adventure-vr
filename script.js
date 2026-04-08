@@ -199,6 +199,7 @@
       this.lastHitAt = 0;
       this.hitCooldownMs = 850;
       this.instructionsVisible = false;
+      this.level2AutoTransitionTimer = null;
 
       this.refs = {
         rig: document.querySelector("#playerRig"),
@@ -272,7 +273,7 @@
 
         const ring = document.createElement("a-torus");
         ring.setAttribute("position", `${ringPos.x} ${ringPos.y} ${ringPos.z}`);
-        ring.setAttribute("radius", "0.92");
+        ring.setAttribute("radius", "1.02");
         ring.setAttribute("radius-tubular", "0.08");
         ring.setAttribute(
           "material",
@@ -281,7 +282,7 @@
         ring.setAttribute("spin-float", "");
         ring.setAttribute("collectible", `points: ${CONFIG.level1.ringPoints}; type: ring`);
         ring.setAttribute("class", "active-collider");
-        ring.setAttribute("data-radius", "0.9");
+        ring.setAttribute("data-radius", "1.08");
         ringParent.appendChild(ring);
       }
 
@@ -396,10 +397,14 @@
       hud.setAttribute("visible", newState === GAME_STATES.LEVEL1 || newState === GAME_STATES.LEVEL2);
 
       const moving = newState === GAME_STATES.LEVEL1 || newState === GAME_STATES.LEVEL2;
-      this.refs.rig.setAttribute("auto-fly", `enabled: ${moving}; speed: ${newState === GAME_STATES.LEVEL2 ? 4.9 : 3.8}; steerStrength: 2.1`);
+      this.refs.rig.setAttribute(
+        "auto-fly",
+        `enabled: ${moving}; speed: ${newState === GAME_STATES.LEVEL2 ? 4.9 : 3.8}; steerStrength: 2.55; deadzone: 0.1; smoothing: 4.2; inputSmoothing: 4.6; verticalScale: 0.62; maxLateralSpeed: 2.7`
+      );
 
       if (newState === GAME_STATES.LEVEL1_COMPLETE) {
         this.refs.transitionScore.setAttribute("value", `Score: ${this.score}`);
+        this.scheduleAutoLevel2Start();
       }
 
       if (newState === GAME_STATES.WIN) {
@@ -417,6 +422,10 @@
       this.ringsCollected = 0;
       this.crystalsCollected = 0;
       this.lastHitAt = 0;
+      if (this.level2AutoTransitionTimer) {
+        clearTimeout(this.level2AutoTransitionTimer);
+        this.level2AutoTransitionTimer = null;
+      }
 
       this.refs.rig.object3D.position.set(0, 1.6, 10);
       this.refs.l1Portal.setAttribute("visible", false);
@@ -429,6 +438,16 @@
 
       this.updateHud();
       this.setState(GAME_STATES.LEVEL1);
+    },
+    scheduleAutoLevel2Start: function () {
+      if (this.level2AutoTransitionTimer) clearTimeout(this.level2AutoTransitionTimer);
+      // Keep a short completion screen, then automatically start Level 2.
+      this.level2AutoTransitionTimer = setTimeout(() => {
+        if (this.state !== GAME_STATES.LEVEL1_COMPLETE) return;
+        this.refs.rig.object3D.position.set(0, 1.6, 8);
+        this.setState(GAME_STATES.LEVEL2);
+        this.level2AutoTransitionTimer = null;
+      }, 1300);
     },
 
     toggleMusic: async function () {
@@ -501,6 +520,10 @@
           this.toggleInstructionsText();
           break;
         case "continue-level2":
+          if (this.level2AutoTransitionTimer) {
+            clearTimeout(this.level2AutoTransitionTimer);
+            this.level2AutoTransitionTimer = null;
+          }
           this.refs.rig.object3D.position.set(0, 1.6, 8);
           this.setState(GAME_STATES.LEVEL2);
           break;
@@ -553,12 +576,12 @@
     schema: {
       enabled: { type: "boolean", default: false },
       speed: { type: "number", default: 4.0 }, // Constant forward speed.
-      steerStrength: { type: "number", default: 2.1 }, // Max side/up drift speed from look direction.
-      deadzone: { type: "number", default: 0.18 }, // Stronger center deadzone to reduce tiny headset jitter.
-      smoothing: { type: "number", default: 5.5 }, // Lower value gives smoother acceleration/deceleration.
-      inputSmoothing: { type: "number", default: 6.0 }, // Smooth raw head-look input before deadzone.
-      verticalScale: { type: "number", default: 0.58 }, // Keep vertical motion comfortable in mobile VR.
-      maxLateralSpeed: { type: "number", default: 2.35 } // Clamp steering speed spikes.
+      steerStrength: { type: "number", default: 2.55 }, // More responsive look-following drift.
+      deadzone: { type: "number", default: 0.1 }, // Start steering sooner from center.
+      smoothing: { type: "number", default: 4.2 }, // Faster velocity response (less floaty).
+      inputSmoothing: { type: "number", default: 4.6 }, // Faster recognition of head movement.
+      verticalScale: { type: "number", default: 0.62 }, // Keep vertical motion comfortable in mobile VR.
+      maxLateralSpeed: { type: "number", default: 2.7 } // Clamp steering speed spikes.
     },
     init: function () {
       this.cameraEl = document.querySelector("#playerCam");
